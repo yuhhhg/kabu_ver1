@@ -3,10 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>所有株リアルタイム表示アプリ</title>
-    </head>
+    <title>リアルタイム表示アプリ</title>
+    <style>
+        /* スタイルは簡略化しています。必要に応じて追加してください */
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
 <body>
-    <h1>私の株式ポートフォリオ</h1>
-    <p>ここに持ち株のリアルタイム表示テーブルをJavaScriptで追加します。</p>
-    </body>
+    <h1>ポートフォリオ</h1>
+
+    <label for="csvFile">**1. 持ち株データ（CSVファイル）を選択してください:**</label>
+    <input type="file" id="csvFile" accept=".csv" onchange="handleFileSelect(event)">
+    <p style="color: red;">※このファイルは**GitHubにアップロードしないでください**。</p>
+
+    <hr>
+    
+    <h2>一覧（リアルタイム評価額）</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>銘柄名</th>
+                <th>株数</th>
+                <th>購入単価</th>
+                <th>現在株価</th>
+                <th>現在評価額</th>
+                <th>損益額 / 損益率</th>
+            </tr>
+        </thead>
+        <tbody id="stock-list">
+            </tbody>
+    </table>
+
+    <h2>再投資の狙い目（簡易AI分析）</h2>
+    <div id="ai-analysis">
+        データが読み込まれると分析結果が表示されます。
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
