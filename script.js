@@ -2,7 +2,7 @@
 // 1. 設定エリア
 // ==========================================
 // Alpha Vantageで取得したAPIキーをここに入力してください
-const API_KEY = 'GTC0EF7JYUD6KVON';
+const API_KEY = GTC0EF7JYUD6KVON;
 
 // 持ち株データを保持する変数
 let myStocks = [];
