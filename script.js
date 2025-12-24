@@ -1,49 +1,41 @@
-// --- 持ち株データの一時保存用変数 ---
+// ==========================================
+// 1. 設定エリア
+// ==========================================
+// Alpha Vantageで取得したAPIキーをここに入力してください
+const API_KEY = 'GTC0EF7JYUD6KVON';
+
+// 持ち株データを保持する変数
 let myStocks = [];
 
-// --- ファイルが選択されたときに実行される関数 ---
+// ==========================================
+// 2. CSVファイル読み込み処理
+// ==========================================
 function handleFileSelect(event) {
     const file = event.target.files[0];
-    if (!file) {
-        return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
-    
-    // ファイルの読み込みが完了したときの処理
     reader.onload = function(e) {
         const csvText = e.target.result;
         try {
-            // CSVテキストを構造化されたデータ（myStocks配列）に変換
             myStocks = parseCSV(csvText);
-            
-            // データが準備できたら、株価取得と表示のメイン処理を呼び出す
             if (myStocks.length > 0) {
-                console.log('CSVデータ読み込み完了:', myStocks);
+                // データがあれば株価取得を開始
                 fetchAndDisplayStocks(myStocks);
             } else {
-                alert('CSVファイルに有効なデータがありませんでした。');
+                alert('CSVファイルにデータが見つかりません。');
             }
         } catch (error) {
-            console.error('CSVパースエラー:', error);
-            alert('CSVファイルの読み込み中にエラーが発生しました。形式を確認してください。');
+            alert('CSVの読み込みに失敗しました。');
         }
     };
-
-    // ファイルをテキストとして読み込む
     reader.readAsText(file);
 }
 
-// --- CSVテキストをJavaScriptオブジェクトに変換する関数 ---
 function parseCSV(csvText) {
     const rows = csvText.trim().split('\n');
-    
-    // ヘッダー行をスキップし、残りの行を処理
-    // 形式: コード,銘柄名,持ち株数,購入時価格
-    const data = rows.slice(1).map(row => {
+    return rows.slice(1).map(row => {
         const cols = row.split(',');
-        
-        // 4つの列が揃っているか確認
         if (cols.length >= 4) {
             return {
                 code: cols[0].trim(),
@@ -53,86 +45,98 @@ function parseCSV(csvText) {
             };
         }
         return null;
-    }).filter(stock => stock && !isNaN(stock.count) && !isNaN(stock.purchasePrice)); // 不正なデータを除外
-    
-    return data;
+    }).filter(s => s !== null);
 }
 
-// --- メイン処理（次のステップで実装）のダミー関数 ---
-// CSV読み込み後に、この関数内で株価を取得し、表示処理を呼び出します。
-function fetchAndDisplayStocks(stocks) {
-    // 【次のステップ：ここで株価を取得するAPIを呼び出します】
-    // 例としてダミーの株価データを付与して表示する処理
-    const dummyData = stocks.map(stock => ({
-        ...stock,
-        currentPrice: stock.code === '9984' ? 5500 : (stock.code === '7203' ? 8000 : 4100)
-    }));
+// ==========================================
+// 3. 本物の株価取得処理 (Alpha Vantage API)
+// ==========================================
+async function fetchAndDisplayStocks(stocks) {
+    const updatedStocks = [];
+    const statusDiv = document.getElementById('ai-analysis');
     
-    // 画面にデータを表示
-    displayStockData(dummyData);
-    
-    // 簡易AI分析を実行
-    runSimpleAIAnalysis(dummyData);
+    statusDiv.innerHTML = "<p>⏳ 株価データを取得中...（無料版のため時間がかかります）</p>";
+
+    for (const stock of stocks) {
+        // 日本株の場合、コードに .T を付与
+        const symbol = `${stock.code}.T`;
+        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const quote = data["Global Quote"];
+
+            if (quote && quote["05. price"]) {
+                stock.currentPrice = parseFloat(quote["05. price"]);
+            } else {
+                console.error('取得失敗:', data);
+                stock.currentPrice = 0; // 取得できなかった場合は0
+            }
+        } catch (error) {
+            stock.currentPrice = 0;
+        }
+        
+        updatedStocks.push(stock);
+
+        // 無料APIの制限(1分5回)に配慮し、1銘柄ごとに少し待機
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    displayStockData(updatedStocks);
+    runSimpleAIAnalysis(updatedStocks);
 }
 
-// --- 株価データを画面に表示する関数（前回のものに微調整） ---
-function displayStockData(stocksWithPrice) {
+// ==========================================
+// 4. 画面表示処理
+// ==========================================
+function displayStockData(stocks) {
     const container = document.getElementById('stock-list');
     container.innerHTML = ''; 
 
-    stocksWithPrice.forEach(stock => {
+    stocks.forEach(stock => {
         const currentValue = stock.currentPrice * stock.count;
         const purchaseValue = stock.purchasePrice * stock.count;
         const profitLoss = currentValue - purchaseValue;
         const profitLossRate = (profitLoss / purchaseValue) * 100;
-        
-        // 損益の色付け
-        const color = profitLoss >= 0 ? 'green' : 'red';
-        
+        const color = profitLoss >= 0 ? '#00aa00' : '#ff0000';
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${stock.name} (${stock.code})</td>
+            <td>${stock.name}<br><small>${stock.code}</small></td>
             <td>${stock.count}</td>
             <td>${stock.purchasePrice.toLocaleString()}円</td>
-            <td>${stock.currentPrice.toLocaleString()}円</td>
+            <td>${stock.currentPrice > 0 ? stock.currentPrice.toLocaleString() + '円' : '取得失敗'}</td>
             <td>${currentValue.toLocaleString()}円</td>
-            <td style="color: ${color};">
-                ${profitLoss.toLocaleString()}円 (${profitLossRate.toFixed(2)}%)
+            <td style="color: ${color}; font-weight: bold;">
+                ${profitLoss.toLocaleString()}円<br>(${profitLossRate.toFixed(2)}%)
             </td>
         `;
         container.appendChild(row);
     });
 }
 
-
-// --- 簡易AI分析機能のダミー実装（次のステップで改良） ---
+// ==========================================
+// 5. 簡易AI分析機能（再投資の狙い目）
+// ==========================================
 function runSimpleAIAnalysis(stocks) {
     const analysisDiv = document.getElementById('ai-analysis');
-    
-    // 簡易ロジック: 損益率が+10%以上の銘柄を「再投資見送り」
-    const sellCandidates = stocks.filter(s => {
-        const profitLossRate = ((s.currentPrice * s.count) - (s.purchasePrice * s.count)) / (s.purchasePrice * s.count) * 100;
-        return profitLossRate > 10;
+    let advice = "<h3>🤖 AI分析結果</h3><ul>";
+
+    stocks.forEach(s => {
+        const diff = (s.currentPrice - s.purchasePrice) / s.purchasePrice * 100;
+        
+        if (diff < -10) {
+            advice += `<li>✅ <b>${s.name}</b>: 購入時より10%以上値下がりしています。長期保有目的であれば、<b>ナンピン買い（再投資）の狙い目</b>です。</li>`;
+        } else if (diff > 20) {
+            advice += `<li>⚠️ <b>${s.name}</b>: 20%以上の利益が出ています。一部利益確定を検討しても良い時期かもしれません。</li>`;
+        }
     });
 
-    // 簡易ロジック: 損益率が-5%以下の銘柄を「再投資検討（ナンピン狙い）」
-    const buyCandidates = stocks.filter(s => {
-        const profitLossRate = ((s.currentPrice * s.count) - (s.purchasePrice * s.count)) / (s.purchasePrice * s.count) * 100;
-        return profitLossRate < -5;
-    });
+    if (stocks.every(s => Math.abs((s.currentPrice - s.purchasePrice) / s.purchasePrice * 100) < 10)) {
+        advice += "<li>現在、大きな動きはありません。じっくりホールド（静観）が推奨されます。</li>";
+    }
 
-    let outputHTML = '<ul>';
-    
-    if (buyCandidates.length > 0) {
-        outputHTML += `<li>**【再投資候補（ナンピン狙い）】**以下の銘柄は現在 ${buyCandidates.map(s => s.name).join(', ')} などが含み損が大きいため、買い増し（ナンピン）のタイミングを検討しても良いかもしれません。</li>`;
-    } else {
-        outputHTML += `<li>現在、含み損が大きな銘柄はありません。</li>`;
-    }
-    
-    if (sellCandidates.length > 0) {
-        outputHTML += `<li>**【利益確定検討】**以下の銘柄は大きく含み益があります: ${sellCandidates.map(s => s.name).join(', ')}。</li>`;
-    }
-    
-    outputHTML += '</ul>';
-    analysisDiv.innerHTML = outputHTML;
+    advice += "</ul>";
+    analysisDiv.innerHTML = advice;
 }
