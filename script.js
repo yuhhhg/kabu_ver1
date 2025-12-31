@@ -1,5 +1,5 @@
 // 1. 設定：スプレッドシートから取得したCSVのURL
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1v...省略.../pub?output=csv';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQiZYj3wizi8W94pZk_5N6hgd3jMydGEPcbmh94vI3Y8qWLuU_NEIzVNLocyGILsb5KURFpgaezxs_u/pub?gid=0&single=true&output=csv';
 
 let myStocks = [];
 
